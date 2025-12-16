@@ -14,9 +14,6 @@ extern "C" int cpp_main(void){
 	uart.sendString("text 123");
 
 	while(1){
-		if(uart.dataAvailable() || uart.Idle()){
-			uart.echoOnReceived();
-		}
 	}
 	
 	return 0;

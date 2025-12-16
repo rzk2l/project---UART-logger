@@ -27,7 +27,7 @@ void UART::init(int baudrate){
     
     /////////////////////////////////////////////////////////////////////////////////////////////
     uart2_ptr = this;   // SET THE GLOBAL POINTER TO POINT TO THIS OBJECT
-    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_IDLEIE | USART_CR1_PCE /* | USART_CR1_PEIE */;     // ENABLE USART2 AND THE TRANSMITTER AND THE RECEIVER (+ RECEIVER INTERRUPT)
+    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_IDLEIE;     // ENABLE USART2 AND THE TRANSMITTER AND THE RECEIVER (+ RECEIVER INTERRUPT)
     NVIC_EnableIRQ(USART2_IRQn);
     NVIC_SetPriority(USART2_IRQn, 8);
 }
@@ -71,9 +71,9 @@ bool UART::Idle(){
 uint8_t UART::readLine(){
     static uint8_t currentStrLen = 0;
 
-    while(((dataAvailable()) && (currentStrLen < TEXT_BUFFER_SIZE - 1)) || UART::lineIdle){
+    while(((currentStrLen < TEXT_BUFFER_SIZE - 1))){
         char c = receiveChar();
-        if(c == '\r' || c == '\n' || c == '\0' || UART::lineIdle){
+        if(c == '\r' || c == '\n' || c == '\0'){
             outputBuffer[currentStrLen] = '\0';
             
             uint8_t finalSize = currentStrLen;
@@ -94,34 +94,35 @@ void UART::echoOnReceived(){
 
         if(receivedBytes > 0){
             sendString(outputBuffer);
-            sendString('\0');
+            sendString("\0");
         }
 }
 
 void UART::handleIRQ(){
     uint32_t sr = USART2->SR;
     
-    if (sr & (USART_SR_ORE | USART_SR_NE | USART_SR_FE | USART_SR_PE)) {
+    if (sr & (USART_SR_ORE | USART_SR_NE | USART_SR_FE)) {
         // Must read DR to clear the flags completely (especially ORE)
         (void)USART2->DR; 
     }
     if ((sr & USART_SR_IDLE)){
         (void)USART2->DR;
+        if(dataAvailable()){
+            echoOnReceived();
+        }
         UART::lineIdle = true;  // SETS THE IDLE LINE TO TRUE WHICH MEANS RECEPTION TERMINATED
     }
     if ((sr & USART_SR_RXNE)) {  //  CHECKS IF THE INTERRUPT WAS CAUSED BY THE RECIEVER
         lineIdle = false;
         char c = (char)USART2->DR;
 
-        if(!(sr & USART_SR_PE)){    //  IF NO PARITY ERROR THEN GO TO THE NEXT CHARACTER
-            uint8_t nextHead = (rxBufferHead + 1) % TEXT_BUFFER_SIZE;
+        uint8_t nextHead = (rxBufferHead + 1) % TEXT_BUFFER_SIZE;
 
-            if(nextHead != rxBufferTail){    
-                rxTextBuffer[rxBufferHead] = c;    // WRITES THE CONTENT OF THE DR REGISTER (WHERE RECIEVER SAVED INCOMING DATA INTO BUFFER)
-                
-                rxBufferHead = (rxBufferHead + 1) % TEXT_BUFFER_SIZE;   // INCREASE TO THE NEXT INDEX WHERE THE NEXT CHARACTER WILL BE PLACED
-                } 
-            }
+        if(nextHead != rxBufferTail){    
+            rxTextBuffer[rxBufferHead] = c;    // WRITES THE CONTENT OF THE DR REGISTER (WHERE RECIEVER SAVED INCOMING DATA INTO BUFFER)
+            
+            rxBufferHead = (rxBufferHead + 1) % TEXT_BUFFER_SIZE;   // INCREASE TO THE NEXT INDEX WHERE THE NEXT CHARACTER WILL BE PLACED
+        } 
     }
     if((sr & USART_SR_TXE) && (USART2->CR1 & USART_CR1_TXEIE)){  // CHECK IF THE INTERRUPT IS VALID
         if(bufferHead != bufferTail){   //  THIS CHECKS IF THE BUFFER IS EMPTY
