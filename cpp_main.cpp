@@ -11,8 +11,10 @@ extern "C" int cpp_main(void){
 	UART uart;
 	uart.init(115200);
 
-	uart.sendString("text 123");
-
+	uart.sendString("text 123\n");
+	uart.sendString("abcde\n");
+	uart.sendString("kdaa\n");
+	uart.sendString("koilkj");
 	while(1){
 	}
 	

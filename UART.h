@@ -2,10 +2,11 @@
 #define UART_H_
 #include "stm32f401xe.h"
 
-#define TEXT_BUFFER_SIZE 20
+constexpr int TEXT_BUFFER_SIZE = 30;
+//constexpr int MAX_MSG = 4;
 
 class UART{
-    volatile char textBuffer[TEXT_BUFFER_SIZE] = {0};  // RING BUFFER TO HOLD THE DATA TO TRANSMIT
+    volatile char TXBuffer[TEXT_BUFFER_SIZE];  // RING BUFFER TO HOLD THE DATA TO TRANSMIT
     volatile uint8_t bufferHead = 0;
     volatile uint8_t bufferTail = 0;
     volatile bool txBusy = false;

@@ -37,12 +37,11 @@ void UART::sendString(const char* data){
     while(data[i]!= '\0'){
         uint8_t nextHead = (bufferHead + 1) % TEXT_BUFFER_SIZE;     // CALCULATES THE INDEX OF THE NEXT CHARACTER (OR THE HEAD OF THE BUFFER)
         if(nextHead != bufferTail){     // CHECKS FOR OVERFLOW, IF NEXT HEAD IS THE TAIL (0), IT MEANS THE BUFFER OVERFLOWED
-            textBuffer[bufferHead] = data[i];   // PUTS THE CHARACTER IN THE BUFFER
+            TXBuffer[bufferHead] = data[i];   // PUTS THE CHARACTER IN THE BUFFER
             bufferHead = nextHead;  //  UPDATES THE HEAD 
         }
         ++i;    
     }
-
     if(!txBusy){
         txBusy = true;
         USART2->CR1 |= USART_CR1_TXEIE;     // DR IS EMPTY SO THE MOMENT THIS IS DONE AN INTERRUPT HAPPENS, AND AN INTERRUPT WILL HAPPEN EVERYTIME DR IS EMPTY, IE EVERYTIME TXBUSY IS FALSE
@@ -94,7 +93,6 @@ void UART::echoOnReceived(){
 
         if(receivedBytes > 0){
             sendString(outputBuffer);
-            sendString("\0");
         }
 }
 
@@ -126,11 +124,9 @@ void UART::handleIRQ(){
     }
     if((sr & USART_SR_TXE) && (USART2->CR1 & USART_CR1_TXEIE)){  // CHECK IF THE INTERRUPT IS VALID
         if(bufferHead != bufferTail){   //  THIS CHECKS IF THE BUFFER IS EMPTY
-            USART2->DR = textBuffer[bufferTail];    // WRITES THE FIRST CHARACTER THAT GOT INTO THE BUFFER
+            USART2->DR = TXBuffer[bufferTail];    // WRITES THE FIRST CHARACTER THAT GOT INTO THE BUFFER
 
-            if(!(sr & USART_SR_PE)){    //  IF NO PARITY ERROR THEN GO TO THE NEXT CHARACTER
-                bufferTail = (bufferTail + 1) % TEXT_BUFFER_SIZE;   // INCREASE TO THE NEXT CHARACTER
-            } 
+            bufferTail = (bufferTail + 1) % TEXT_BUFFER_SIZE;   // INCREASE TO THE NEXT CHARACTER
 
         } else {
             USART2->CR1 &= ~USART_CR1_TXEIE;    // DISABLE INTERRUPT WHEN BUFFER IS EMPTY, OTHERWISE IT'LL KEEP FIRING BECAUSE DR WILL BE EMPTY
